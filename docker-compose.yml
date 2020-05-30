@@ -101,7 +101,7 @@ services:
       POSTGRES_USER: workshop
       POSTGRES_PASSWORD: w0rkzh0p
     ports:
-      - "5432:5432"
+      - "5433:5433"
 
   redis:
     container_name: redis

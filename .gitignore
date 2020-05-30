@@ -20,3 +20,6 @@ superset/conf/superset.db
 __pycache__
 dataset/titanic_*
 .idea/
+
+# datasets
+code/python/us-stock-analysis/src/stream/QLS_TFI/datasets/backup
