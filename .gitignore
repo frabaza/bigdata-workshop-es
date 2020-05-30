@@ -22,4 +22,7 @@ dataset/titanic_*
 .idea/
 
 # datasets
-code/python/us-stock-analysis/src/stream/QLS_TFI/datasets/backup
+code/python/us-stock-analysis/src/stream/TFI/datasets/backup
+
+# formatter
+code/python/us-stock-analysis/src/stream/TFI/formatter.py

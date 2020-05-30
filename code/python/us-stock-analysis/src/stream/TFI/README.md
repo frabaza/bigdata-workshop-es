@@ -4,10 +4,10 @@
 ```bash
 docker exec -it worker1 bash
 
-cd /app/python/us-stock-analysis/src/stream/QLS_TFI
+cd /app/python/us-stock-analysis/src/stream/TFI
 
 # generate stream data
-python qls_fake_producer.py kafka:9092 QLS
+python tfi_fake_producer.py kafka:9092 TFI
 ```
 
 ### Process using Spark Structured Stream API
@@ -24,23 +24,9 @@ spark-submit \
   --master 'spark://master:7077' \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.5 \
   --jars /app/postgresql-42.1.4.jar \
-  src/stream/QLS_TFI/consumer_test.py \
-  kafka:9092 QLS
+  src/stream/TFI/consumer_test.py \
+  kafka:9092 TFI
 ```
-
-#borrar
-
-spark-submit \
-  --master 'spark://master:7077' \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.5 \
-  --jars /app/postgresql-42.1.4.jar \
-  src/stream/QLS_TFI/test_sin_parsear.py \
-  kafka:9092 QLS
-
-
-
-
-
 
 Crear las tablas que vamos a utilizar para el ejercicio con los siguientes comandos (copiar el comando entero, pegar y presionar enter por cada uno)
 
