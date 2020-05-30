@@ -79,20 +79,20 @@ def start_stream(args):
 
 
     # cambio jsonString por json
-    qls_json_uc = jsonString \
+    tfi_json_uc = jsonString \
         .filter(F.col('key') == 'unit_concern') \
         .select(from_json(F.col("value").cast("string"), schema_uc, json_options).alias("content"))
 
     print('unit_concern schema')
-    qls_json_uc.printSchema()
+    tfi_json_uc.printSchema()
 
-    qls_uc = qls_json_uc.select("content.*")
+    tfi_uc = tfi_json_uc.select("content.*")
 
     # busco que solo emita las columnas qls_unit_id y unit_collection_pt_timestamp
 
-    qls_uc = qls_uc.select("qls_unit_id", "unit_collection_pt_timestamp","concern_id","zone_charged_id")
+    tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","concern_id","zone_charged_id")
 
-    fail_count = qls_uc \
+    fail_count = tfi_uc \
     .groupBy(F.col("zone_charged_id")) \
     .count().alias("fails")
 
@@ -109,20 +109,20 @@ def start_stream(args):
 
 
     # cambio jsonString por json
-    qls_json_ucp = jsonString \
+    tfi_json_ucp = jsonString \
         .filter(F.col('key') == 'unit_collection_point') \
         .select(from_json(F.col("value").cast("string"), schema_ucp, json_options).alias("content"))
 
     print('unit_collection_point schema')
-    qls_json_ucp.printSchema()
+    tfi_json_ucp.printSchema()
 
-    qls_ucp = qls_json_ucp.select("content.*")
+    tfi_ucp = tfi_json_ucp.select("content.*")
 
     # busco que solo emita las columnas qls_unit_id y unit_collection_pt_timestamp
 
-    qls_ucp = qls_ucp.select("qls_unit_id", "unit_collection_pt_timestamp","zone_id")
+    tfi_ucp = tfi_ucp.select("qls_unit_id", "unit_collection_pt_timestamp","zone_id")
 
-    unit_count = qls_ucp \
+    unit_count = tfi_ucp \
     .groupBy(F.col("zone_id")) \
     .count().alias("units")
 
@@ -139,7 +139,7 @@ def start_stream(args):
     # muestro a consola los mensajes que llegan #
     #############################################
 
-    # query_uc = qls_uc.writeStream \
+    # query_uc = tfi_uc.writeStream \
     #     .outputMode('append') \
     #     .format("console") \
     #     .trigger(processingTime="10 seconds") \
@@ -172,7 +172,7 @@ def start_stream(args):
     # muestro a consola los mensajes que llegan #
     #############################################
 
-    # query_ucp = qls_ucp.writeStream \
+    # query_ucp = tfi_ucp.writeStream \
     #     .outputMode('append') \
     #     .format("console") \
     #     .trigger(processingTime="10 seconds") \
@@ -211,12 +211,10 @@ def start_stream(args):
         sleep(10)     
 
 
-
-
 #     ####################################
 #     # Stream to Parquet
 #     ####################################
-#     query = qls \
+#     query = tfi \
 #         .withColumn('year', year(F.col('unit_collection_pt_timestamp'))) \
 #         .withColumn('month', month(F.col('unit_collection_pt_timestamp'))) \
 #         .withColumn('day', dayofmonth(F.col('unit_collection_pt_timestamp'))) \
@@ -225,8 +223,8 @@ def start_stream(args):
 #         .format('parquet') \
 #         .partitionBy('year', 'month', 'day', 'hour') \
 #         .option('startingOffsets', 'earliest') \
-#         .option('checkpointLocation', '/dataset/checkpoint_qls') \
-#         .option('path', '/dataset/streaming.qls') \
+#         .option('checkpointLocation', '/dataset/checkpoint_tfi') \
+#         .option('path', '/dataset/streaming.tfi') \
 #         .trigger(processingTime='30 seconds') \
 #         .start()
 
@@ -237,7 +235,7 @@ def start_stream(args):
     ####################################
 
     # Simple insert
-    # query = stream_to_postgres(tfi)
+    # query = stream_to_postgres(tfi) #la variable de arriba es tfi_uc/tfi_ucp
     # query.awaitTermination()
 
     # Average Price Aggregation
