@@ -15,7 +15,7 @@ def validate_params(args):
          |  <brokers> is a list of one or more Kafka brokers
          |  <topic> is a a kafka topic to consume from
          |
-         |  {args[0]} kafka:9092 QLS
+         |  {args[0]} kafka:9092 TFI
         """)
         sys.exit(1)
     pass
@@ -24,7 +24,7 @@ def validate_params(args):
 def create_spark_session():
     return SparkSession \
         .builder \
-        .appName("QLS:Stream:unit_concern") \
+        .appName("TFI:Stream:unit_concern") \
         .getOrCreate()
 
 
@@ -237,15 +237,15 @@ def start_stream(args):
     ####################################
 
     # Simple insert
-    # query = stream_to_postgres(qls)
+    # query = stream_to_postgres(tfi)
     # query.awaitTermination()
 
     # Average Price Aggregation
-    # query = stream_aggregation_to_postgres(qls)
+    # query = stream_aggregation_to_postgres(tfi)
     # query.awaitTermination()
 
     # Final Average Price Aggregation with Timestamp columns
-    # query = stream_aggregation_to_postgres_final(qls)
+    # query = stream_aggregation_to_postgres_final(tfi)
     # query.awaitTermination()
 
 ##############################################
@@ -277,9 +277,9 @@ def define_write_to_postgres(table_name):
     return write_to_postgres
 
 
-def stream_to_postgres(qls, output_table="qls_streaming_inserts"):
-    wqls =  (
-        qls
+def stream_to_postgres(tfi, output_table="tfi_streaming_inserts"):
+    wtfi =  (
+        tfi
             .withWatermark("unit_collection_pt_timestamp", "365 days")
             .select("qls_unit_id", "unit_collection_pt_timestamp", "collection_point_id") \
             .dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
@@ -288,10 +288,10 @@ def stream_to_postgres(qls, output_table="qls_streaming_inserts"):
     # atras que 10 segundos de hoy. Pongo 365 dias para debug, no es aplicable a produccion porque tendria que
     # mantener un año de datos en memoria y asi funciona
 
-    write_to_postgres_fn = define_write_to_postgres("qls_streaming_inserts")
+    write_to_postgres_fn = define_write_to_postgres("tfi_streaming_inserts")
 
     query = (
-        wqls.writeStream
+        wtfi.writeStream
         .foreachBatch(write_to_postgres_fn)
         .outputMode("append")
         .trigger(processingTime="10 seconds")
@@ -303,9 +303,9 @@ def stream_to_postgres(qls, output_table="qls_streaming_inserts"):
 
 # Lo que viene aca es para sumarizar
 
-def summarize_fails(qls):
+def summarize_fails(tfi):
     fail_count = (
-        qls
+        tfi
         .withWatermark("unit_collection_pt_timestamp", "365 days") \
         .groupBy(hour(F.col("unit_collection_pt_timestamp")).alias("hour"),F.col("collection_point_id")) \
         .count().alias("fails")
@@ -314,9 +314,9 @@ def summarize_fails(qls):
     return fail_count
 
 
-def stream_aggregation_to_postgres(qls, output_table="streaming_inserts_fail_count"):
+def stream_aggregation_to_postgres(tfi, output_table="streaming_inserts_fail_count"):
 
-    fail_count = summarize_fails(qls)
+    fail_count = summarize_fails(tfi)
 
     write_to_postgres_fn = define_write_to_postgres(output_table)
 
@@ -332,9 +332,9 @@ def stream_aggregation_to_postgres(qls, output_table="streaming_inserts_fail_cou
     return query
 
 
-def stream_aggregation_to_postgres_final(qls, output_table="streaming_inserts_avg_price_final"):
+def stream_aggregation_to_postgres_final(tfi, output_table="streaming_inserts_avg_price_final"):
 
-    fail_count = summarize_fails(qls)
+    fail_count = summarize_fails(tfi)
 
     window_start_ts_fn = F.udf(lambda w: w.start, TimestampType())
 
