@@ -59,22 +59,22 @@ def start_stream(args):
     ####################################
     # Stream to Parquet
     ####################################
-    query = stocks \
-        .withColumn('year', year(F.col('timestamp'))) \
-        .withColumn('month', month(F.col('timestamp'))) \
-        .withColumn('day', dayofmonth(F.col('timestamp'))) \
-        .withColumn('hour', hour(F.col('timestamp'))) \
-        .withColumn('minute', minute(F.col('timestamp'))) \
-        .writeStream \
-        .format('parquet') \
-        .partitionBy('year', 'month', 'day', 'hour', 'minute') \
-        .option('startingOffsets', 'earliest') \
-        .option('checkpointLocation', '/dataset/checkpoint') \
-        .option('path', '/dataset/streaming.parquet') \
-        .trigger(processingTime='30 seconds') \
-        .start()
+    # query = stocks \
+    #     .withColumn('year', year(F.col('timestamp'))) \
+    #     .withColumn('month', month(F.col('timestamp'))) \
+    #     .withColumn('day', dayofmonth(F.col('timestamp'))) \
+    #     .withColumn('hour', hour(F.col('timestamp'))) \
+    #     .withColumn('minute', minute(F.col('timestamp'))) \
+    #     .writeStream \
+    #     .format('parquet') \
+    #     .partitionBy('year', 'month', 'day', 'hour', 'minute') \
+    #     .option('startingOffsets', 'earliest') \
+    #     .option('checkpointLocation', '/dataset/checkpoint') \
+    #     .option('path', '/dataset/streaming.parquet') \
+    #     .trigger(processingTime='30 seconds') \
+    #     .start()
 
-    query.awaitTermination()
+    # query.awaitTermination()
 
 
     # avg_pricing = stocks \
@@ -117,8 +117,8 @@ def start_stream(args):
     ####################################
 
     # Simple insert
-    # query = stream_to_postgres(stocks)
-    # query.awaitTermination()
+    query = stream_to_postgres(stocks)
+    query.awaitTermination()
 
     # Average Price Aggregation
     # query = stream_aggregation_to_postgres(stocks)

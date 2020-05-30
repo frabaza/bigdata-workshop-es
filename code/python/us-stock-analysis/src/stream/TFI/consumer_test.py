@@ -90,7 +90,7 @@ def start_stream(args):
 
     # busco que solo emita las columnas qls_unit_id y unit_collection_pt_timestamp
 
-    tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","concern_id","zone_charged_id")
+    tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id","concern_id","zone_charged_id")
 
     fail_count = tfi_uc \
     .groupBy(F.col("zone_charged_id")) \
@@ -149,13 +149,13 @@ def start_stream(args):
     # Tabla de agregados por zone_charged #
     #######################################
 
-    query_agg_uc = fail_count \
-        .writeStream \
-        .queryName("fail_count") \
-        .outputMode("complete") \
-        .format("memory") \
-        .trigger(processingTime="10 seconds") \
-        .start()
+    # query_agg_uc = fail_count \
+    #     .writeStream \
+    #     .queryName("fail_count") \
+    #     .outputMode("complete") \
+    #     .format("memory") \
+    #     .trigger(processingTime="10 seconds") \
+    #     .start()
     
     # while True:
     #     print('\n' + '_' * 30)
@@ -182,13 +182,13 @@ def start_stream(args):
     # Tabla de agregados por zone_charged #
     #######################################
 
-    query_agg_ucp = unit_count \
-        .writeStream \
-        .queryName("unit_count") \
-        .outputMode("complete") \
-        .format("memory") \
-        .trigger(processingTime="10 seconds") \
-        .start()
+    # query_agg_ucp = unit_count \
+    #     .writeStream \
+    #     .queryName("unit_count") \
+    #     .outputMode("complete") \
+    #     .format("memory") \
+    #     .trigger(processingTime="10 seconds") \
+    #     .start()
     
     # while True:
     #     print('\n' + '_' * 30)
@@ -199,16 +199,16 @@ def start_stream(args):
 
     
     #si quiero mostrar las dos tablas de agregados las tengo que poner en el mismo while
-    while True:
-        print('\n' + '_' * 30)
-        # interactively query in-memory table
-        spark.sql('SELECT * FROM unit_count').show()
-        print(query_agg_ucp.lastProgress)
-        print('\n' + '_' * 30)
-        # interactively query in-memory table
-        spark.sql('SELECT * FROM fail_count').show()
-        print(query_agg_uc.lastProgress)
-        sleep(10)     
+    # while True:
+    #     print('\n' + '_' * 30)
+    #     # interactively query in-memory table
+    #     spark.sql('SELECT * FROM unit_count').show()
+    #     print(query_agg_ucp.lastProgress)
+    #     print('\n' + '_' * 30)
+    #     # interactively query in-memory table
+    #     spark.sql('SELECT * FROM fail_count').show()
+    #     print(query_agg_uc.lastProgress)
+    #     sleep(10)     
 
 
 #     ####################################
@@ -235,8 +235,8 @@ def start_stream(args):
     ####################################
 
     # Simple insert
-    # query = stream_to_postgres(tfi) #la variable de arriba es tfi_uc/tfi_ucp
-    # query.awaitTermination()
+    query_pg_uc = stream_to_postgres(tfi_uc)
+    # query_pg_ucp = stream_to_postgres(tfi_uc) #la variable de arriba es tfi_uc/tfi_ucp
 
     # Average Price Aggregation
     # query = stream_aggregation_to_postgres(tfi)
@@ -251,9 +251,11 @@ def start_stream(args):
 ##############################################
 
     # query_uc.awaitTermination()
-    query_agg_uc.awaitTermination()
+    # query_agg_uc.awaitTermination()
     # query_ucp.awaitTermination()
-    query_agg_ucp.awaitTermination()
+    # query_agg_ucp.awaitTermination()
+    query_pg_uc.awaitTermination()
+    # query_pg_ucp.awaitTermination()
 
     pass
 
@@ -275,12 +277,12 @@ def define_write_to_postgres(table_name):
     return write_to_postgres
 
 
-def stream_to_postgres(tfi, output_table="tfi_streaming_inserts"):
+def stream_to_postgres(tfi_uc, output_table="uc"):
     wtfi =  (
-        tfi
-            .withWatermark("unit_collection_pt_timestamp", "365 days")
-            .select("qls_unit_id", "unit_collection_pt_timestamp", "collection_point_id") \
-            .dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
+        tfi_uc
+            .withWatermark("unit_collection_pt_timestamp", "60 seconds")
+            .select("qls_unit_id", "unit_collection_pt_timestamp", "collection_point_id","concern_id","zone_charged_id") \
+            # .dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
     )
     # ver documentacion. withWatermark no funciona porque los datos son viejos (11-2019) y me borra todo lo que entre mas 
     # atras que 10 segundos de hoy. Pongo 365 dias para debug, no es aplicable a produccion porque tendria que

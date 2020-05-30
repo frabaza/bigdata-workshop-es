@@ -30,27 +30,36 @@ spark-submit \
 
 Crear las tablas que vamos a utilizar para el ejercicio con los siguientes comandos (copiar el comando entero, pegar y presionar enter por cada uno)
 
+```bash
+./control-env.sh psql
+```
+
 ```sql
-CREATE table qls_streaming_inserts (
-"qls_unit_id" integer not null,
+CREATE table uc (
+"qls_unit_id" integer NOT NULL,
 "unit_collection_pt_timestamp" timestamptz NOT NUll,
-"collection_point_id" integer not null);
+"collection_point_id" integer NOT NULL,
+"concern_id" integer NOT NULL,
+"zone_charged_id" integer NOT NULL
+);
+
+CREATE table ucp (
+"qls_unit_id" integer NOT NULL,
+"unit_collection_pt_timestamp" timestamptz NOT NUll,
+"collection_point_id" integer NOT NULL,
+"zone_id" integer NOT NULL
 );
 ```
 
 ```sql
 CREATE TABLE streaming_inserts_fail_count (
-    "window" varchar(128),
-    "collection_point_id" integer,
-    fail_count integer
+  "zone_charged_id" integer NOT NULL,
+  "fails" integer
+);
+
+CREATE TABLE streaming_inserts_unit_count (
+  "zone_id" integer NOT NULL,
+  "units" integer
 );
 ```
 
-```sql
-CREATE TABLE streaming_inserts_avg_price_final (
-    window_start timestamp,
-    window_end timestamp,
-    symbol varchar(10),
-    avg_price real
-);
-```
