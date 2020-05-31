@@ -17,7 +17,7 @@ if __name__ == '__main__':
         |  <brokers> is a list of one or more Kafka brokers
         |  <topic> one kafka topic to produce to
         | 
-        |  Example: {args[0]} kafka:9092 QLS
+        |  Example: {args[0]} kafka:9092 TFI
         """)
         sys.exit(1) 
     _, brokers, topic = args
