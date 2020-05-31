@@ -52,7 +52,7 @@ def start_stream(args):
     stocks_json = json \
         .select(from_json(F.col("value").cast("string"), schema, json_options).alias("content"))
 
-    stocks_json.printSchema
+    stocks_json.printSchema()
 
     stocks = stocks_json.select("content.*")
 
@@ -151,7 +151,7 @@ def define_write_to_postgres(table_name):
 def stream_to_postgres(stocks, output_table="streaming_inserts"):
     wstocks =  (
         stocks
-            .withWatermark("timestamp", "60 seconds")
+            # .withWatermark("timestamp", "60 seconds")
             .select("timestamp", "symbol", "price")
     )
 
