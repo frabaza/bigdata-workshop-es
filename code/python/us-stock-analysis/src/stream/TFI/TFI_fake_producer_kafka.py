@@ -98,9 +98,9 @@ if __name__ == '__main__':
             concern = dict(zip(columns_ucp, ucp.astype(convert_dict_unitcollection).iloc[df.idx[i],:].tolist())) #convierto aca los tipos
             producer.send(topic,key = "unit_collection_point", value=concern)
             print(concern)
-            sleep(2)
+            sleep(.05)
         elif df.key[i] == 'unit_concern':
             concern = dict(zip(columns_uc, uc.astype(convert_dict_unitconcern).iloc[df.idx[i],:].tolist())) #convierto aca los tipos
             producer.send(topic,key = "unit_concern", value=concern)
             print(concern)
-            sleep(2)
+            sleep(.05)
