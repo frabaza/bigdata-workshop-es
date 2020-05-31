@@ -55,8 +55,8 @@ if __name__ == '__main__':
     #Creo un df con la tabla y el timestamp y lo ordeno, de esa manera simulo como se envian los mensajes
     #cronologicamente a la base de datos de acuerdo a como ocurren
 
-    dfuc = pd.DataFrame({'key':'unit_concern','timestamp':uc['unit_collection_pt_timestamp']})
-    dfucp = pd.DataFrame({'key':'unit_collection_point','timestamp':ucp['unit_collection_pt_timestamp']})
+    dfuc = pd.DataFrame({'key':'unit_concern','timestamp':uc['unit_collection_pt_timestamp'],'idx':range(0, len(uc))})
+    dfucp = pd.DataFrame({'key':'unit_collection_point','timestamp':ucp['unit_collection_pt_timestamp'],'idx':range(0, len(ucp))})
     df=pd.concat([dfuc,dfucp])
     df.sort_values(by=['timestamp'], inplace=True)
     df = df.reset_index(drop=True)
@@ -95,12 +95,12 @@ if __name__ == '__main__':
 
     for i in range(len(df)):
         if df.key[i] == 'unit_collection_point':
-            concern = dict(zip(columns_ucp, ucp.astype(convert_dict_unitcollection).iloc[i,:].tolist())) #convierto aca los tipos
+            concern = dict(zip(columns_ucp, ucp.astype(convert_dict_unitcollection).iloc[df.idx[i],:].tolist())) #convierto aca los tipos
             producer.send(topic,key = "unit_collection_point", value=concern)
             print(concern)
-            sleep(1.2)
+            sleep(2)
         elif df.key[i] == 'unit_concern':
-            concern = dict(zip(columns_uc, uc.astype(convert_dict_unitconcern).iloc[i,:].tolist())) #convierto aca los tipos
+            concern = dict(zip(columns_uc, uc.astype(convert_dict_unitconcern).iloc[df.idx[i],:].tolist())) #convierto aca los tipos
             producer.send(topic,key = "unit_concern", value=concern)
             print(concern)
-            sleep(1.2)
+            sleep(2)
