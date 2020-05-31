@@ -39,9 +39,9 @@ def start_stream(args):
         .format("kafka") \
         .option("kafka.bootstrap.servers", brokers) \
         .option("subscribe", topic) \
-        .option("startingOffsets", "latest") \
-        .option("failOnDataLoss","false") \
         .load()
+        # .option("startingOffsets", "latest") \
+        # .option("failOnDataLoss","false") 
 
     json.printSchema()
 
@@ -90,7 +90,7 @@ def start_stream(args):
 
     # busco que solo emita las columnas qls_unit_id y unit_collection_pt_timestamp
 
-    tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id","concern_id","zone_charged_id")
+    # tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id","concern_id","zone_charged_id")
 
     fail_count = tfi_uc \
     .groupBy(F.col("zone_charged_id")) \
@@ -139,11 +139,11 @@ def start_stream(args):
     # muestro a consola los mensajes que llegan #
     #############################################
 
-    # query_uc = tfi_uc.writeStream \
-    #     .outputMode('append') \
-    #     .format("console") \
-    #     .trigger(processingTime="10 seconds") \
-    #     .start()
+    query_uc = tfi_uc.writeStream \
+        .outputMode('append') \
+        .format("console") \
+        .trigger(processingTime="10 seconds") \
+        .start()
 
     #######################################
     # Tabla de agregados por zone_charged #
@@ -172,11 +172,11 @@ def start_stream(args):
     # muestro a consola los mensajes que llegan #
     #############################################
 
-    # query_ucp = tfi_ucp.writeStream \
-    #     .outputMode('append') \
-    #     .format("console") \
-    #     .trigger(processingTime="10 seconds") \
-    #     .start()
+    query_ucp = tfi_ucp.writeStream \
+        .outputMode('append') \
+        .format("console") \
+        .trigger(processingTime="10 seconds") \
+        .start()
 
     #######################################
     # Tabla de agregados por zone_charged #
@@ -236,7 +236,7 @@ def start_stream(args):
 
     # Simple insert
     query_pg_uc = stream_to_postgres(tfi_uc)
-    # query_pg_ucp = stream_to_postgres(tfi_uc) #la variable de arriba es tfi_uc/tfi_ucp
+    # query_pg_ucp = stream_to_postgres(tfi_ucp) #la variable de arriba es tfi_uc/tfi_ucp
 
     # Average Price Aggregation
     # query = stream_aggregation_to_postgres(tfi)
@@ -250,9 +250,9 @@ def start_stream(args):
 # A partir de aca dejo loopeando las queries #
 ##############################################
 
-    # query_uc.awaitTermination()
+    query_uc.awaitTermination()
     # query_agg_uc.awaitTermination()
-    # query_ucp.awaitTermination()
+    query_ucp.awaitTermination()
     # query_agg_ucp.awaitTermination()
     query_pg_uc.awaitTermination()
     # query_pg_ucp.awaitTermination()
@@ -282,13 +282,13 @@ def stream_to_postgres(tfi_uc, output_table="uc"):
         tfi_uc
             .withWatermark("unit_collection_pt_timestamp", "60 seconds")
             .select("qls_unit_id", "unit_collection_pt_timestamp", "collection_point_id","concern_id","zone_charged_id") \
-            # .dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
+            #.dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
     )
     # ver documentacion. withWatermark no funciona porque los datos son viejos (11-2019) y me borra todo lo que entre mas 
     # atras que 10 segundos de hoy. Pongo 365 dias para debug, no es aplicable a produccion porque tendria que
     # mantener un año de datos en memoria y asi funciona
 
-    write_to_postgres_fn = define_write_to_postgres("tfi_streaming_inserts")
+    write_to_postgres_fn = define_write_to_postgres("uc")
 
     query = (
         wtfi.writeStream
