@@ -92,9 +92,10 @@ def start_stream(args):
 
     tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id","concern_id","zone_charged_id")
 
-    fail_count = tfi_uc \
-    .groupBy(F.col("zone_charged_id")) \
-    .count().alias("fails")
+    # # Esto va si muestro los agregados en pantalla
+    # fail_count = tfi_uc \
+    # .groupBy(F.col("zone_charged_id")) \
+    # .count().alias("fails")
 
 #########################################################
 # unit_collection_point ( ucp = unit_collection_point ) #
@@ -122,9 +123,10 @@ def start_stream(args):
 
     tfi_ucp = tfi_ucp.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id", "zone_id")
 
-    unit_count = tfi_ucp \
-    .groupBy(F.col("zone_id")) \
-    .count().alias("units")
+    # #Esto va si muestro los agregados en pantalla
+    # unit_count = tfi_ucp \
+    # .groupBy(F.col("zone_id")) \
+    # .count().alias("units")
 
 
 ####################################
@@ -211,24 +213,44 @@ def start_stream(args):
     #     sleep(10)     
 
 
+#####################################
+#          Checkpoints              #
+#####################################
+
+
+
 #     ####################################
-#     # Stream to Parquet
+#     # Stream to Parquet uc             #
 #     ####################################
-#     query = tfi \
+#     query_chk_uc = tfi_uc \
 #         .withColumn('year', year(F.col('unit_collection_pt_timestamp'))) \
 #         .withColumn('month', month(F.col('unit_collection_pt_timestamp'))) \
 #         .withColumn('day', dayofmonth(F.col('unit_collection_pt_timestamp'))) \
-#         .withColumn('hour', hour(F.col('unit_collection_pt_timestamp'))) \
 #         .writeStream \
 #         .format('parquet') \
-#         .partitionBy('year', 'month', 'day', 'hour') \
+#         .partitionBy('year', 'month', 'day') \
 #         .option('startingOffsets', 'earliest') \
-#         .option('checkpointLocation', '/dataset/checkpoint_tfi') \
-#         .option('path', '/dataset/streaming.tfi') \
+#         .option('checkpointLocation', '/dataset/checkpoint_tfi_uc') \
+#         .option('path', '/dataset/streaming.tfi_uc') \
 #         .trigger(processingTime='30 seconds') \
 #         .start()
 
-#     query.awaitTermination()
+#     ####################################
+#     # Stream to Parquet ucp            #
+#     ####################################
+#     query_chk_ucp = tfi_ucp \
+#         .withColumn('year', year(F.col('unit_collection_pt_timestamp'))) \
+#         .withColumn('month', month(F.col('unit_collection_pt_timestamp'))) \
+#         .withColumn('day', dayofmonth(F.col('unit_collection_pt_timestamp'))) \
+#         .writeStream \
+#         .format('parquet') \
+#         .partitionBy('year', 'month', 'day') \
+#         .option('startingOffsets', 'earliest') \
+#         .option('checkpointLocation', '/dataset/checkpoint_tfi_ucp') \
+#         .option('path', '/dataset/streaming.tfi_ucp') \
+#         .trigger(processingTime='30 seconds') \
+#         .start()
+
 
     ####################################
     # Writing to Postgres
@@ -239,12 +261,8 @@ def start_stream(args):
     query_pg_ucp = stream_to_postgres(tfi_ucp,"ucp")
 
     # Average Price Aggregation
-    # query = stream_aggregation_to_postgres(tfi)
-    # query.awaitTermination()
-
-    # Final Average Price Aggregation with Timestamp columns
-    # query = stream_aggregation_to_postgres_final(tfi)
-    # query.awaitTermination()
+    # query_pg_aggr_uc = stream_aggregation_to_postgres(tfi_uc,"fail counts")
+    # query_pg_aggr_ucp = stream_aggregation_to_postgres(tfi_ucp,"unit counts")
 
 ##############################################
 # A partir de aca dejo loopeando las queries #
@@ -256,6 +274,12 @@ def start_stream(args):
     # query_agg_ucp.awaitTermination()
     query_pg_uc.awaitTermination()
     query_pg_ucp.awaitTermination()
+    # query_pg_aggr_uc.awaitTermination()
+    # query_pg_aggr_ucp.awaitTermination()
+    
+    # Checkpointing
+    # query_chk_uc.awaitTermination()
+    # query_chk_ucp.awaitTermination()
 
     pass
 
@@ -303,50 +327,24 @@ def stream_to_postgres(query, output_table):
 
 # Lo que viene aca es para sumarizar
 
-def summarize_fails(tfi):
+def summarize_fails(tfi_uc):
     fail_count = (
-        tfi
-        .withWatermark("unit_collection_pt_timestamp", "365 days") \
-        .groupBy(hour(F.col("unit_collection_pt_timestamp")).alias("hour"),F.col("collection_point_id")) \
+        tfi_uc \
+        .groupBy(hour(F.col("unit_collection_pt_timestamp")).alias("hour"),F.col("zone_charged_id")) \
         .count().alias("fails")
     )
     fail_count.printSchema()
     return fail_count
 
 
-def stream_aggregation_to_postgres(tfi, output_table="streaming_inserts_fail_count"):
+def stream_aggregation_to_postgres(query, output_table):
 
-    fail_count = summarize_fails(tfi)
-
-    write_to_postgres_fn = define_write_to_postgres(output_table)
-
-    query = (
-        fail_count\
-        .writeStream
-        .foreachBatch(write_to_postgres_fn)
-        .outputMode("append")
-        .trigger(processingTime="10 seconds")
-        .start()
-    )
-
-    return query
-
-
-def stream_aggregation_to_postgres_final(tfi, output_table="streaming_inserts_avg_price_final"):
-
-    fail_count = summarize_fails(tfi)
-
-    window_start_ts_fn = F.udf(lambda w: w.start, TimestampType())
-
-    window_end_ts_fn = F.udf(lambda w: w.end, TimestampType())
+    fail_count = summarize_fails(tfi_uc)
 
     write_to_postgres_fn = define_write_to_postgres(output_table)
 
     query = (
         fail_count\
-        .withColumn("window_start", window_start_ts_fn("window"))
-        .withColumn("window_end", window_end_ts_fn("window"))
-        .drop("window")
         .writeStream
         .foreachBatch(write_to_postgres_fn)
         .outputMode("append")
