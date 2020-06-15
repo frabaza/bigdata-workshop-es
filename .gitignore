@@ -24,7 +24,6 @@ dataset/titanic_*
 # datasets
 code/python/us-stock-analysis/src/stream/TFI/datasets/backup
 
-# formatter
-code/python/us-stock-analysis/src/stream/TFI/formatter.py
-
+# backup files
+code/python/us-stock-analysis/src/stream/TFI/backup
 queries
