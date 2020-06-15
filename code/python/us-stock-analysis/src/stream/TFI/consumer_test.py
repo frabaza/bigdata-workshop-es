@@ -93,9 +93,10 @@ def start_stream(args):
     tfi_uc = tfi_uc.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id","concern_id","zone_charged_id")
 
     # # Esto va si muestro los agregados en pantalla
-    # fail_count = tfi_uc \
-    # .groupBy(F.col("zone_charged_id")) \
-    # .count().alias("fails")
+    fail_count = tfi_uc \
+    .dropDuplicates(["qls_unit_id","zone_charged_id"]) \
+    .groupBy(F.col("zone_charged_id")) \
+    .count().alias("fails")
 
 #########################################################
 # unit_collection_point ( ucp = unit_collection_point ) #
@@ -123,10 +124,12 @@ def start_stream(args):
 
     tfi_ucp = tfi_ucp.select("qls_unit_id", "unit_collection_pt_timestamp","collection_point_id", "zone_id")
 
-    # #Esto va si muestro los agregados en pantalla
-    # unit_count = tfi_ucp \
-    # .groupBy(F.col("zone_id")) \
-    # .count().alias("units")
+    #Esto va si muestro los agregados en pantalla
+    unit_count = tfi_ucp \
+    .dropDuplicates(["qls_unit_id","zone_id"]) \
+    .groupBy(F.col("zone_id")) \
+    .count().alias("units")
+
 
 
 ####################################
@@ -151,13 +154,13 @@ def start_stream(args):
     # Tabla de agregados por zone_charged #
     #######################################
 
-    # query_agg_uc = fail_count \
-    #     .writeStream \
-    #     .queryName("fail_count") \
-    #     .outputMode("complete") \
-    #     .format("memory") \
-    #     .trigger(processingTime="10 seconds") \
-    #     .start()
+    query_agg_uc = fail_count \
+        .writeStream \
+        .queryName("fail_count") \
+        .outputMode("complete") \
+        .format("memory") \
+        .trigger(processingTime="10 seconds") \
+        .start()
     
     # while True:
         # print('\n' + '_' * 30)
@@ -184,33 +187,33 @@ def start_stream(args):
     # Tabla de agregados por zone_charged #
     #######################################
 
-    # query_agg_ucp = unit_count \
-    #     .writeStream \
-    #     .queryName("unit_count") \
-    #     .outputMode("complete") \
-    #     .format("memory") \
-    #     .trigger(processingTime="10 seconds") \
-    #     .start()
+    query_agg_ucp = unit_count \
+        .writeStream \
+        .queryName("unit_count") \
+        .outputMode("complete") \
+        .format("memory") \
+        .trigger(processingTime="10 seconds") \
+        .start()
     
     # while True:
-        # print('\n' + '_' * 30)
-        # # interactively query in-memory table
-        # spark.sql('SELECT * FROM unit_count').show()
-        # # print(query_agg_ucp.lastProgress)
-        # sleep(10)
+    #     print('\n' + '_' * 30)
+    #     # interactively query in-memory table
+    #     spark.sql('SELECT zone_id, count as cant_des FROM unit_count order by cant_des DESC').show()
+    #     # print(query_agg_ucp2.lastProgress)
+    #     sleep(10)
 
     
-    #si quiero mostrar las dos tablas de agregados las tengo que poner en el mismo while
-    # while True:
-    #     print('\n' + '_' * 30)
-    #     # interactively query in-memory table
-    #     spark.sql('SELECT * FROM unit_count').show()
-    #     # print(query_agg_ucp.lastProgress)
-    #     print('\n' + '_' * 30)
-    #     # interactively query in-memory table
-    #     spark.sql('SELECT * FROM fail_count').show()
-    #     # print(query_agg_uc.lastProgress)
-    #     sleep(10)     
+    # # si quiero mostrar las dos tablas de agregados las tengo que poner en el mismo while
+    while True:
+        print('\n' + '_' * 30)
+        # interactively query in-memory table
+        spark.sql('SELECT zone_charged_id, count as fails FROM fail_count order by fails desc').show()
+        # print(query_agg_ucp.lastProgress)
+        print('\n' + '_' * 30)
+        # interactively query in-memory table
+        spark.sql('SELECT zone_id, count as units FROM unit_count order by units DESC').show()
+        # print(query_agg_uc.lastProgress)
+        sleep(10)     
 
 
 #####################################
@@ -261,17 +264,17 @@ def start_stream(args):
     query_pg_ucp = stream_to_postgres(tfi_ucp,"ucp")
 
     # Average Price Aggregation
-    # query_pg_aggr_uc = stream_aggregation_to_postgres(tfi_uc,"fail counts")
-    # query_pg_aggr_ucp = stream_aggregation_to_postgres(tfi_ucp,"unit counts")
+    # query_pg_aggr_uc = stream_aggregation_to_postgres_fails(tfi_uc,"fail_totals")
+    # query_pg_aggr_ucp = stream_aggregation_to_postgres_units(tfi_ucp,"unit_totals")
 
 ##############################################
 # A partir de aca dejo loopeando las queries #
 ##############################################
 
     query_uc.awaitTermination()
-    # query_agg_uc.awaitTermination()
+    query_agg_uc.awaitTermination()
     query_ucp.awaitTermination()
-    # query_agg_ucp.awaitTermination()
+    query_agg_ucp.awaitTermination()
     query_pg_uc.awaitTermination()
     query_pg_ucp.awaitTermination()
     # query_pg_aggr_uc.awaitTermination()
@@ -305,12 +308,8 @@ def stream_to_postgres(query, output_table):
     wquery =  (
         query
             .withWatermark("unit_collection_pt_timestamp", "60 seconds")
-            #.select("qls_unit_id", "unit_collection_pt_timestamp", "collection_point_id","concern_id","zone_charged_id") \
-            #.dropDuplicates() #llenar select con las columnas. Crear tabla en Postgres, tirar duplicados prueba
     )
-    # ver documentacion. withWatermark no funciona porque los datos son viejos (11-2019) y me borra todo lo que entre mas 
-    # atras que 10 segundos de hoy. Pongo 365 dias para debug, no es aplicable a produccion porque tendria que
-    # mantener un año de datos en memoria y asi funciona
+  
 
     write_to_postgres_fn = define_write_to_postgres(output_table)
 
@@ -326,20 +325,33 @@ def stream_to_postgres(query, output_table):
 
 
 # Lo que viene aca es para sumarizar
+# No funciona bien, ya que se va sobreescribiendo en cada batch (insert vs upsert). No encuentro como hacer
+# upsert a postgres
 
-def summarize_fails(tfi_uc):
-    fail_count = (
-        tfi_uc \
-        .groupBy(hour(F.col("unit_collection_pt_timestamp")).alias("hour"),F.col("zone_charged_id")) \
-        .count().alias("fails")
-    )
+def summarize_fails(query):
+    #query tiene que ser tfi_uc
+    fail_count = query \
+    .dropDuplicates(["qls_unit_id","zone_charged_id"]) \
+    .groupBy(F.col("zone_charged_id")) \
+    .count().alias("fails")
+
     fail_count.printSchema()
     return fail_count
 
+def summarize_units(query):
+    #query tiene que ser tfi_ucp
+    unit_count = query \
+    .dropDuplicates(["qls_unit_id","zone_id"]) \
+    .groupBy(F.col("zone_id")) \
+    .count().alias("units")
 
-def stream_aggregation_to_postgres(query, output_table):
+    unit_count.printSchema()
+    return unit_count
 
-    fail_count = summarize_fails(tfi_uc)
+
+def stream_aggregation_to_postgres_fails(query, output_table):
+
+    fail_count = summarize_fails(query)
 
     write_to_postgres_fn = define_write_to_postgres(output_table)
 
@@ -347,7 +359,24 @@ def stream_aggregation_to_postgres(query, output_table):
         fail_count\
         .writeStream
         .foreachBatch(write_to_postgres_fn)
-        .outputMode("append")
+        .outputMode("update")
+        .trigger(processingTime="10 seconds")
+        .start()
+    )
+
+    return query
+
+def stream_aggregation_to_postgres_units(query, output_table):
+
+    unit_count = summarize_units(query)
+
+    write_to_postgres_fn = define_write_to_postgres(output_table)
+
+    query = (
+        unit_count\
+        .writeStream
+        .foreachBatch(write_to_postgres_fn)
+        .outputMode("update")
         .trigger(processingTime="10 seconds")
         .start()
     )
