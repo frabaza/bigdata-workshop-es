@@ -1,5 +1,3 @@
-### QLS app para FTI
-
 ### Comenzar fake generator
 ```bash
 docker exec -it worker1 bash
@@ -7,7 +5,7 @@ docker exec -it worker1 bash
 cd /app/python/us-stock-analysis/src/stream/TFI
 
 # generate stream data
-python tfi_fake_producer.py kafka:9092 TFI
+python TFI_fake_producer.py kafka:9092 TFI
 ```
 
 ### Process using Spark Structured Stream API
@@ -52,12 +50,12 @@ CREATE table ucp (
 ```
 
 ```sql
-CREATE TABLE streaming_inserts_fail_count (
+CREATE TABLE fail_totals (
   "zone_charged_id" integer NOT NULL,
   "fails" integer
 );
 
-CREATE TABLE streaming_inserts_unit_count (
+CREATE TABLE unit_totals (
   "zone_id" integer NOT NULL,
   "units" integer
 );
